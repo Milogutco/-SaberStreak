@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaberStreak - Pruebas Saber 11</title>
+  <!-- Tailwind CSS CDN para estilos -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome para íconos -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    canvas {
+      touch-action: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased">
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col justify-between p-4 bg-slate-950 shadow-2xl border-x border-slate-800">
+
+    <!-- HEADER / BARRA SUPERIOR -->
+    <header id="user-header" class="hidden flex flex-col space-y-2 pb-3 border-b border-slate-800">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-lg" id="avatar-initial">U</div>
+          <div>
+            <h2 class="font-bold text-sm leading-tight" id="header-user-name">Estudiante</h2>
+            <span class="text-xs text-indigo-400 font-medium" id="user-rank">Nivel: Novato</span>
+          </div>
+        </div>
+        <!-- Rachas y Puntos -->
+        <div class="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800">
+          <div class="flex items-center text-orange-500 font-bold text-xs" title="Racha de días seguidos">
+            <i class="fa-solid fa-fire mr-1 text-sm animate-pulse"></i>
+            <span id="streak-count">1</span>
+          </div>
+          <div class="w-px h-3 bg-slate-700"></div>
+          <div class="flex items-center text-amber-400 font-bold text-xs" title="Puntos acumulados">
+            <i class="fa-solid fa-star mr-1 text-sm"></i>
+            <span id="points-count">0</span> PTS
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra de experiencia -->
+      <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800">
+        <div id="level-bar" class="bg-gradient-to-r from-indigo-500 to-amber-400 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+      </div>
+    </header>
+
+    <!-- PANTALLA 1: LOGIN -->
+    <section id="screen-login" class="my-auto flex flex-col items-center justify-center text-center py-8">
+      <div class="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center mb-6 shadow-lg shadow-indigo-500/30 rotate-3">
+        <i class="fa-solid fa-graduation-cap text-4xl text-white"></i>
+      </div>
+      <h1 class="text-3xl font-extrabold text-white tracking-tight mb-2">Saber<span class="text-indigo-400">Streak</span></h1>
+      <p class="text-slate-400 text-sm mb-8 px-4">Entrena tu mente diariamente para el ICFES con microaprendizaje e interactividad.</p>
+
+      <form id="form-login" class="w-full space-y-4">
+        <div>
+          <input type="text" id="input-name" required placeholder="Nombre o Carné Estudiantil" class="w-full px-4 py-3.5 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm transition">
+        </div>
+        <button type="submit" id="btn-login-submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition transform active:scale-95 text-sm">
+          Iniciar Entrenamiento <i class="fa-solid fa-arrow-right ml-2"></i>
+        </button>
+      </form>
+    </section>
+
+    <!-- PANTALLA 2: ENTRENADOR DE PREGUNTAS (DIARIA O POR ÁREA) -->
+    <section id="screen-question" class="hidden my-auto space-y-4 py-2">
+      <div class="flex items-center justify-between">
+        <span id="badge-question-type" class="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-semibold rounded-full flex items-center">
+          <i class="fa-solid fa-bolt mr-1.5"></i> PREGUNTA DEL DÍA
+        </span>
+        <button id="btn-back-dashboard" onclick="goToDashboard()" class="hidden text-xs text-indigo-400 hover:underline">
+          <i class="fa-solid fa-arrow-left mr-1"></i> Volver al Menú
+        </button>
+      </div>
+
+      <!-- Contexto Adicional -->
+      <div id="context-box" class="hidden bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 max-h-36 overflow-y-auto leading-relaxed">
+      </div>
+
+      <!-- Enunciado -->
+      <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-3">
+        <p class="text-sm text-slate-200 font-medium leading-relaxed" id="question-text">
+          Cargando pregunta...
+        </p>
+      </div>
+
+      <!-- Opciones -->
+      <div class="space-y-2.5" id="options-container">
+      </div>
+
+      <!-- Módulo de Retroalimentación -->
+      <div id="feedback-box" class="hidden p-4 rounded-2xl border space-y-2 animate-fade-in">
+        <div class="flex items-center space-x-2 font-bold text-sm" id="feedback-title">
+        </div>
+        <div class="text-xs leading-relaxed text-slate-300 space-y-1" id="feedback-text">
+        </div>
+        <button id="btn-continue" onclick="onQuestionFinished()" class="w-full mt-3 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition">
+          Continuar <i class="fa-solid fa-chevron-right ml-1"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- PANTALLA 3: ACERTIJOS -->
+    <section id="screen-riddles" class="hidden space-y-4 py-2">
+      <div class="flex items-center justify-between">
+        <span class="px-3 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs font-semibold rounded-full flex items-center">
+          <i class="fa-solid fa-puzzle-piece mr-1.5"></i> RETO DE ACERTIJOS
+        </span>
+        <button onclick="goToDashboard()" class="text-xs text-indigo-400 hover:underline">
+          <i class="fa-solid fa-arrow-left mr-1"></i> Volver al Menú
+        </button>
+      </div>
+
+      <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-3">
+        <span id="riddle-category" class="text-xs font-bold text-amber-400 uppercase tracking-wider">Ciencias</span>
+        <p id="riddle-statement" class="text-sm text-slate-200 font-medium leading-relaxed">
+          Cargando acertijo...
+        </p>
+      </div>
+
+      <!-- Formulario para escribir la respuesta -->
+      <form id="form-riddle" onsubmit="checkRiddleAnswer(event)" class="space-y-3">
+        <div>
+          <input type="text" id="input-riddle-answer" required placeholder="Escribe tu respuesta aquí..." class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 text-xs transition">
+        </div>
+        <div class="flex space-x-2">
+          <button type="submit" id="btn-submit-riddle" class="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition">
+            <i class="fa-solid fa-paper-plane mr-1.5"></i> Responder
+          </button>
+          <button type="button" onclick="revealRiddleAnswer()" class="px-3 py-3 bg-slate-800 hover:bg-slate-700 text-slate-400 font-medium rounded-xl text-xs transition" title="Ver Solución">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+      </form>
+
+      <!-- Mensaje de Retroalimentación de Acertijo -->
+      <div id="riddle-feedback-box" class="hidden p-4 rounded-2xl border text-xs space-y-1 animate-fade-in">
+        <div class="flex items-center space-x-2 font-bold text-sm" id="riddle-feedback-title"></div>
+        <div id="riddle-feedback-text" class="text-slate-300 leading-relaxed"></div>
+      </div>
+
+      <button id="btn-next-riddle" onclick="nextRiddle()" class="hidden w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition">
+        Siguiente Acertijo <i class="fa-solid fa-forward ml-2"></i>
+      </button>
+    </section>
+
+    <!-- PANTALLA 4: JUEGO ESTILO MARIO AVANZADO -->
+    <section id="screen-game" class="hidden space-y-3 py-2">
+      <div class="flex items-center justify-between">
+        <span class="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-semibold rounded-full flex items-center">
+          <i class="fa-solid fa-gamepad mr-1.5"></i> <span id="game-level-title">NIVEL 1: LAS PLATAFORMAS</span>
+        </span>
+        <button onclick="goToDashboard()" class="text-xs text-indigo-400 hover:underline">
+          <i class="fa-solid fa-arrow-left mr-1"></i> Menú
+        </button>
+      </div>
+
+      <!-- LIENZO DEL JUEGO -->
+      <div class="relative w-full overflow-hidden rounded-2xl border border-slate-800 bg-sky-900 shadow-inner">
+        <canvas id="gameCanvas" width="360" height="220" class="w-full h-auto block"></canvas>
+      </div>
+
+      <!-- CONTROLES TÁCTILES / PANTALLA -->
+      <div class="grid grid-cols-3 gap-2 pt-1">
+        <button ontouchstart="gameMoveLeft(true)" ontouchend="gameMoveLeft(false)" onmousedown="gameMoveLeft(true)" onmouseup="gameMoveLeft(false)" class="py-3 bg-slate-800 active:bg-slate-700 rounded-xl font-bold text-sm text-center border border-slate-700 select-none">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <button onclick="gameJump()" class="py-3 bg-amber-600 active:bg-amber-500 rounded-xl font-bold text-xs text-center border border-amber-500 text-white shadow-lg select-none">
+          <i class="fa-solid fa-angles-up mr-1"></i> SALTAR
+        </button>
+        <button ontouchstart="gameMoveRight(true)" ontouchend="gameMoveRight(false)" onmousedown="gameMoveRight(true)" onmouseup="gameMoveRight(false)" class="py-3 bg-slate-800 active:bg-slate-700 rounded-xl font-bold text-sm text-center border border-slate-700 select-none">
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- PANTALLA 5: DASHBOARD / MENÚ PRINCIPAL -->
+    <section id="screen-dashboard" class="hidden space-y-4 py-2">
+      <div class="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-500/30 p-4 rounded-2xl flex justify-between items-center">
+        <div>
+          <h3 class="font-bold text-sm text-indigo-200">¡Racha Activa!</h3>
+          <p class="text-xs text-slate-400">Elige un modo para ganar puntos.</p>
+        </div>
+        <div class="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400 text-xl font-bold">
+          <i class="fa-solid fa-trophy"></i>
+        </div>
+      </div>
+
+      <!-- MINIJUEGO MARIO -->
+      <div>
+        <h3 class="font-bold text-slate-200 text-xs uppercase tracking-wider mb-2 text-amber-400">Juego Interactivo Avanzado</h3>
+        <button onclick="startMarioGame(1)" class="w-full p-3.5 bg-gradient-to-r from-amber-900/40 to-orange-900/40 border border-amber-500/30 hover:border-amber-500/60 rounded-2xl flex items-center justify-between text-left transition group">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-gamepad"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-white group-hover:text-amber-300 transition">Saber Jump (Modo Plataformas)</h4>
+              <p class="text-xs text-slate-400">Supera 3 niveles con scroll y enemigos</p>
+            </div>
+          </div>
+          <span class="px-2 py-1 bg-amber-500/20 text-amber-300 font-bold text-xs rounded-lg">+20 PTS</span>
+        </button>
+      </div>
+
+      <!-- ENTRETENIMIENTO (ACERTIJOS) -->
+      <div>
+        <h3 class="font-bold text-slate-200 text-xs uppercase tracking-wider mb-2 text-purple-400">Zona de Entretenimiento</h3>
+        <button onclick="startRiddlesMode()" class="w-full p-3.5 bg-gradient-to-r from-purple-900/30 to-indigo-900/30 border border-purple-500/30 hover:border-purple-500/60 rounded-2xl flex items-center justify-between text-left transition group">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-lightbulb"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-white group-hover:text-purple-300 transition">Desafío de Acertijos</h4>
+              <p class="text-xs text-slate-400">Lógica e ingenio rápido</p>
+            </div>
+          </div>
+          <span class="px-2 py-1 bg-purple-500/20 text-purple-300 font-bold text-xs rounded-lg">+10 PTS</span>
+        </button>
+      </div>
+
+      <!-- ÁREAS ICFES -->
+      <div>
+        <h3 class="font-bold text-slate-200 text-xs uppercase tracking-wider mb-2 text-indigo-400">Práctica por Áreas ICFES</h3>
+        <div class="grid grid-cols-1 gap-2">
+          <button onclick="startAreaQuiz('naturales')" class="p-2.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl flex items-center justify-between text-left transition group">
+            <div class="flex items-center space-x-3">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm">
+                <i class="fa-solid fa-flask"></i>
+              </div>
+              <h4 class="font-bold text-xs text-slate-200 group-hover:text-indigo-400 transition">Ciencias Naturales</h4>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-600 group-hover:text-indigo-400 transition"></i>
+          </button>
+
+          <button onclick="startAreaQuiz('matematicas')" class="p-2.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl flex items-center justify-between text-left transition group">
+            <div class="flex items-center space-x-3">
+              <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm">
+                <i class="fa-solid fa-calculator"></i>
+              </div>
+              <h4 class="font-bold text-xs text-slate-200 group-hover:text-indigo-400 transition">Matemáticas</h4>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-600 group-hover:text-indigo-400 transition"></i>
+          </button>
+
+          <button onclick="startAreaQuiz('sociales')" class="p-2.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl flex items-center justify-between text-left transition group">
+            <div class="flex items-center space-x-3">
+              <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm">
+                <i class="fa-solid fa-landmark"></i>
+              </div>
+              <h4 class="font-bold text-xs text-slate-200 group-hover:text-indigo-400 transition">Sociales y Ciudadanas</h4>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-600 group-hover:text-indigo-400 transition"></i>
+          </button>
+
+          <button onclick="startAreaQuiz('lectura')" class="p-2.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl flex items-center justify-between text-left transition group">
+            <div class="flex items-center space-x-3">
+              <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm">
+                <i class="fa-solid fa-book-open"></i>
+              </div>
+              <h4 class="font-bold text-xs text-slate-200 group-hover:text-indigo-400 transition">Lectura Crítica</h4>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-600 group-hover:text-indigo-400 transition"></i>
+          </button>
+
+          <button onclick="startAreaQuiz('ingles')" class="p-2.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl flex items-center justify-between text-left transition group">
+            <div class="flex items-center space-x-3">
+              <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center text-sm">
+                <i class="fa-solid fa-language"></i>
+              </div>
+              <h4 class="font-bold text-xs text-slate-200 group-hover:text-indigo-400 transition">Inglés</h4>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-600 group-hover:text-indigo-400 transition"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="pt-3 border-t border-slate-900 text-center text-slate-600 text-xs">
+      SaberStreak &copy; 2026 - Kaipoferia Ciclo 5
+    </footer>
+
+  </div>
+
+  <!-- JAVASCRIPT PRINCIPAL Y MOTOR DEL JUEGO CON SCROLL -->
+  <script>
+    // --- ESTADO GLOBAL Y PUNTOS ---
+    let currentUser = "";
+    let userPoints = 0;
+    let userStreak = 1;
+    let isDailyMode = true;
+    let isGameTriggered = false;
+    let currentQuestion = null;
+    let isAnswered = false;
+    let currentRiddleIndex = 0;
+    let riddleAnswered = false;
+
+    // BANCO DE ACERTIJOS
+    const riddlesList = [
+      { category: "Ciencias y Naturaleza", statement: "Tengo un gran apetito y, si me alimentas con madera, crezco y brillo con fuerza. Sin embargo, si me das un solo trago de agua, moriré al instante. ¿Qué soy?", answer: "El fuego", keywords: ["fuego", "flama", "llama"] },
+      { category: "Ciencias y Naturaleza", statement: "Un astronauta viaja al espacio profundo y regresa a la Tierra. Al bajarse de la nave, nota que es más joven que su hermano gemelo que se quedó en nuestro planeta. ¿Cómo es esto posible?", answer: "Por la teoría de la relatividad de Einstein.", keywords: ["relatividad", "tiempo", "einstein"] },
+      { category: "Ciencias y Naturaleza", statement: "Puedo ser duro como una roca, ligero como una pluma, invisible como el aire o correr como un río. Cambio de forma pero sigo siendo el mismo. ¿Qué soy?", answer: "El agua (sus tres estados).", keywords: ["agua", "h2o", "liquido"] },
+      { category: "Ciencias Sociales e Historia", statement: "Tengo ciudades, pero no casas. Tengo montañas, pero no piedras. Tengo ríos, pero no agua. ¿Qué soy?", answer: "Un mapa geográfico.", keywords: ["mapa", "plano", "cartografia"] },
+      { category: "Ciencias Sociales e Historia", statement: "Un rey decretó: 'Cualquiera que diga una mentira será colgado, y si dice una verdad será decapitado'. Un prisionero dijo una frase que obligó a dejarlo libre. ¿Qué dijo?", answer: "'Voy a ser colgado'.", keywords: ["colgado", "ahorcado", "colgar"] },
+      { category: "Matemáticas y Lógica", statement: "¿Qué pesa más? ¿Un kilo de ladrillos o un kilo de plumas?", answer: "Pesan exactamente lo mismo.", keywords: ["igual", "mismo", "lo mismo"] }
+    ];
+
+    // BANCO DE PREGUNTAS ICFES
+    const questionBank = {
+      daily: {
+        type: "PREGUNTA DEL DÍA",
+        area: "Ciencias Naturales",
+        context: "Se tienen dos esferas metálicas idénticas: una esfera (1) con carga +Q y otra esfera (2) neutra. Al ponerlas en contacto y separarlas, ambas quedan con carga +Q/2.",
+        statement: "Con base en la información anterior, ¿qué sucedió al poner las esferas en contacto?",
+        options: [
+          { id: "A", text: "De la esfera 2 pasaron electrones hacia la esfera 1." },
+          { id: "B", text: "De la esfera 2 pasaron protones hacia la esfera 1." },
+          { id: "C", text: "De la esfera 1 pasaron electrones hacia la esfera 2." },
+          { id: "D", text: "De la esfera 1 pasaron protones hacia la esfera 2." }
+        ],
+        correct: "A",
+        explanation: "<strong>Respuesta correcta: A</strong><br>Los electrones (carga negativa) de la esfera 2 pasan a la esfera 1, equilibrando las cargas."
+      },
+      naturales: [
+        {
+          area: "Ciencias Naturales",
+          context: "Un estudiante compara las densidades de tres líquidos (agua, etanol y aceite) midiendo 100g de cada uno a distintas temperaturas.",
+          statement: "¿Por qué el experimento está mal planteado?",
+          options: [
+            { id: "A", text: "Porque las temperaturas empleadas no son las mismas." },
+            { id: "B", text: "Porque no midió diferentes volúmenes." },
+            { id: "C", text: "Porque faltaron temperaturas más altas." },
+            { id: "D", text: "Porque el aceite es muy diferente al agua." }
+          ],
+          correct: "A",
+          explanation: "<strong>Respuesta correcta: A</strong><br>Para comparar densidades se deben mantener las mismas temperaturas."
+        }
+      ],
+      matematicas: [
+        {
+          area: "Matemáticas",
+          context: "Un colegio enviará 5 representantes: 2 de décimo (de 5 preparados) y 3 de undécimo (de 4 preparados).",
+          statement: "¿Cuántos grupos diferentes pueden formarse?",
+          options: [
+            { id: "A", text: "9" }, { id: "B", text: "14" }, { id: "C", text: "20" }, { id: "D", text: "40" }
+          ],
+          correct: "D",
+          explanation: "<strong>Respuesta correcta: D</strong><br>C(5,2) × C(4,3) = 10 × 4 = 40."
+        }
+      ],
+      sociales: [
+        {
+          area: "Sociales y Ciudadanas",
+          context: "El gobierno concertó con una comunidad indígena reubicar su asentamiento para construir una represa.",
+          statement: "Según la Constitución de Colombia, ¿cómo procedió el Gobierno?",
+          options: [
+            { id: "A", text: "Vulneró los derechos indígenas." },
+            { id: "B", text: "Favoreció a los indígenas sobre el interés general." },
+            { id: "C", text: "Mostró respeto por la comunidad en función del bien común." },
+            { id: "D", text: "Debió convocar consulta popular." }
+          ],
+          correct: "C",
+          explanation: "<strong>Respuesta correcta: C</strong><br>Se garantizó el bien común mediante diálogo."
+        }
+      ],
+      lectura: [
+        {
+          area: "Lectura Crítica",
+          context: "En la frase: 'Las fotografías son la prueba irrecusable de que se hizo la excursión'.",
+          statement: "¿Qué palabra es sinónimo de 'irrecusable'?",
+          options: [
+            { id: "A", text: "Inminente" }, { id: "B", text: "Concluyente" }, { id: "C", text: "Irremplazable" }, { id: "D", text: "Cuestionable" }
+          ],
+          correct: "B",
+          explanation: "<strong>Respuesta correcta: B</strong><br>'Irrecusable' equivale a algo 'concluyente'."
+        }
+      ],
+      ingles: [
+        {
+          area: "Inglés",
+          context: "Conversación de compras.",
+          statement: "How much is that umbrella?",
+          options: [
+            { id: "A", text: "Anything else?" }, { id: "B", text: "50 dollars." }, { id: "C", text: "Cash only!" }
+          ],
+          correct: "B",
+          explanation: "<strong>Respuesta correcta: B</strong><br>Responde al precio monetario ('50 dollars')."
+        }
+      ]
+    };
+
+    // PUNTOS Y RANGOS
+    function addPoints(pts) {
+      userPoints += pts;
+      document.getElementById('points-count').innerText = userPoints;
+      
+      const rankElement = document.getElementById('user-rank');
+      const barElement = document.getElementById('level-bar');
+      
+      let percentage = (userPoints / 200) * 100;
+      if (percentage > 100) percentage = 100;
+      barElement.style.width = percentage + "%";
+
+      if (userPoints < 50) {
+        rankElement.innerText = "Nivel: Novato 🐣";
+      } else if (userPoints < 100) {
+        rankElement.innerText = "Nivel: Estudiante ICFES 📚";
+      } else if (userPoints < 150) {
+        rankElement.innerText = "Nivel: Promesa Saber 🌟";
+      } else {
+        rankElement.innerText = "Nivel: Crack de Once 👑";
+      }
+    }
+
+    // PANTALLAS Y HEADER
+    const screenLogin = document.getElementById('screen-login');
+    const screenQuestion = document.getElementById('screen-question');
+    const screenRiddles = document.getElementById('screen-riddles');
+    const screenGame = document.getElementById('screen-game');
+    const screenDashboard = document.getElementById('screen-dashboard');
+    const userHeader = document.getElementById('user-header');
+    const feedbackBox = document.getElementById('feedback-box');
+
+    // INICIO DE SESIÓN CORREGIDO (EVENT LISTENER DIRECTO)
+    document.addEventListener("DOMContentLoaded", () => {
+      const loginForm = document.getElementById('form-login');
+      if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const inputVal = document.getElementById('input-name').value.trim();
+          if (!inputVal) return;
+
+          currentUser = inputVal;
+          document.getElementById('header-user-name').innerText = currentUser;
+          document.getElementById('avatar-initial').innerText = currentUser.charAt(0).toUpperCase();
+          userHeader.classList.remove('hidden');
+
+          loadQuestion(questionBank.daily, true);
+        });
+      }
+    });
+
+    // PREGUNTAS ICFES
+    function loadQuestion(qData, isDaily = false, fromGame = false) {
+      currentQuestion = qData;
+      isDailyMode = isDaily;
+      isGameTriggered = fromGame;
+      isAnswered = false;
+
+      screenLogin.classList.add('hidden');
+      screenDashboard.classList.add('hidden');
+      screenRiddles.classList.add('hidden');
+      screenGame.classList.add('hidden');
+      screenQuestion.classList.remove('hidden');
+      feedbackBox.classList.add('hidden');
+
+      const badge = document.getElementById('badge-question-type');
+      const btnBack = document.getElementById('btn-back-dashboard');
+
+      if (isDaily) {
+        badge.innerHTML = `<i class="fa-solid fa-bolt mr-1.5"></i> PREGUNTA DEL DÍA`;
+        btnBack.classList.add('hidden');
+      } else if(fromGame) {
+        badge.innerHTML = `<i class="fa-solid fa-gamepad mr-1.5"></i> PREGUNTA DEL BLOQUE ?`;
+        btnBack.classList.add('hidden');
+      } else {
+        badge.innerHTML = `<i class="fa-solid fa-book-open mr-1.5"></i> PRÁCTICA: ${qData.area.toUpperCase()}`;
+        btnBack.classList.remove('hidden');
+      }
+
+      const contextBox = document.getElementById('context-box');
+      if (qData.context) {
+        contextBox.innerText = qData.context;
+        contextBox.classList.remove('hidden');
+      } else {
+        contextBox.classList.add('hidden');
+      }
+
+      document.getElementById('question-text').innerText = qData.statement;
+      const container = document.getElementById('options-container');
+      container.innerHTML = '';
+
+      qData.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = "w-full p-3.5 bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-xl text-left text-xs text-slate-300 font-medium flex items-center space-x-3 transition active:scale-98";
+        btn.onclick = () => checkAnswer(opt.id, btn);
+        btn.innerHTML = `
+          <span class="w-7 h-7 rounded-lg bg-slate-800 text-slate-400 font-bold flex items-center justify-center shrink-0 border border-slate-700">${opt.id}</span>
+          <span>${opt.text}</span>
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    function checkAnswer(selectedId, selectedBtn) {
+      if(isAnswered) return;
+      isAnswered = true;
+
+      const feedbackTitle = document.getElementById('feedback-title');
+      const feedbackText = document.getElementById('feedback-text');
+      const allButtons = document.querySelectorAll('#options-container button');
+      allButtons.forEach(btn => btn.disabled = true);
+
+      if (selectedId === currentQuestion.correct) {
+        selectedBtn.classList.add('border-emerald-500', 'bg-emerald-950/30');
+        addPoints(20);
+        if(isDailyMode) {
+          userStreak += 1;
+          document.getElementById('streak-count').innerText = userStreak;
+        }
+
+        feedbackBox.className = "p-4 rounded-2xl border border-emerald-500/40 bg-emerald-950/20 text-emerald-200 animate-fade-in space-y-2";
+        feedbackTitle.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i> <span>¡Respuesta Correcta! (+20 PTS)</span>`;
+      } else {
+        selectedBtn.classList.add('border-rose-500', 'bg-rose-950/30');
+        allButtons.forEach(btn => {
+          if (btn.innerText.includes(currentQuestion.correct)) {
+            btn.classList.add('border-emerald-500', 'bg-emerald-950/20');
+          }
+        });
+
+        feedbackBox.className = "p-4 rounded-2xl border border-rose-500/40 bg-rose-950/20 text-rose-200 animate-fade-in space-y-2";
+        feedbackTitle.innerHTML = `<i class="fa-solid fa-circle-xmark text-rose-400 text-lg"></i> <span>Respuesta Incorrecta</span>`;
+      }
+
+      feedbackText.innerHTML = currentQuestion.explanation;
+      feedbackBox.classList.remove('hidden');
+    }
+
+    function onQuestionFinished() {
+      if(isGameTriggered) {
+        screenQuestion.classList.add('hidden');
+        screenGame.classList.remove('hidden');
+        requestAnimationFrame(gameLoop);
+      } else {
+        goToDashboard();
+      }
+    }
+
+    // ACERTIJOS
+    function startRiddlesMode() {
+      screenDashboard.classList.add('hidden');
+      screenRiddles.classList.remove('hidden');
+      loadRiddle();
+    }
+
+    function loadRiddle() {
+      riddleAnswered = false;
+      document.getElementById('input-riddle-answer').value = '';
+      document.getElementById('input-riddle-answer').disabled = false;
+      document.getElementById('btn-submit-riddle').disabled = false;
+      document.getElementById('riddle-feedback-box').classList.add('hidden');
+      document.getElementById('btn-next-riddle').classList.add('hidden');
+
+      const riddle = riddlesList[currentRiddleIndex];
+      document.getElementById('riddle-category').innerText = riddle.category;
+      document.getElementById('riddle-statement').innerText = riddle.statement;
+    }
+
+    function checkRiddleAnswer(event) {
+      event.preventDefault();
+      if(riddleAnswered) return;
+
+      const userAns = document.getElementById('input-riddle-answer').value.toLowerCase().trim();
+      const riddle = riddlesList[currentRiddleIndex];
+      
+      const feedbackBox = document.getElementById('riddle-feedback-box');
+      const feedbackTitle = document.getElementById('riddle-feedback-title');
+      const feedbackText = document.getElementById('riddle-feedback-text');
+
+      const isCorrect = riddle.keywords.some(kw => userAns.includes(kw));
+
+      riddleAnswered = true;
+      document.getElementById('input-riddle-answer').disabled = true;
+      document.getElementById('btn-submit-riddle').disabled = true;
+
+      if (isCorrect) {
+        addPoints(10);
+        feedbackBox.className = "p-4 rounded-2xl border border-emerald-500/40 bg-emerald-950/20 text-emerald-200 animate-fade-in space-y-1";
+        feedbackTitle.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i> <span>¡Excelente! Correcto (+10 PTS)</span>`;
+        feedbackText.innerHTML = `<strong>Respuesta esperada:</strong> ${riddle.answer}`;
+      } else {
+        feedbackBox.className = "p-4 rounded-2xl border border-rose-500/40 bg-rose-950/20 text-rose-200 animate-fade-in space-y-1";
+        feedbackTitle.innerHTML = `<i class="fa-solid fa-circle-xmark text-rose-400 text-lg"></i> <span>No es del todo correcto</span>`;
+        feedbackText.innerHTML = `<strong>Solución:</strong> ${riddle.answer}`;
+      }
+
+      feedbackBox.classList.remove('hidden');
+      document.getElementById('btn-next-riddle').classList.remove('hidden');
+    }
+
+    function revealRiddleAnswer() {
+      if(riddleAnswered) return;
+      riddleAnswered = true;
+
+      const riddle = riddlesList[currentRiddleIndex];
+      const feedbackBox = document.getElementById('riddle-feedback-box');
+      const feedbackTitle = document.getElementById('riddle-feedback-title');
+      const feedbackText = document.getElementById('riddle-feedback-text');
+
+      document.getElementById('input-riddle-answer').disabled = true;
+      document.getElementById('btn-submit-riddle').disabled = true;
+
+      feedbackBox.className = "p-4 rounded-2xl border border-purple-500/40 bg-purple-950/20 text-purple-200 animate-fade-in space-y-1";
+      feedbackTitle.innerHTML = `<i class="fa-solid fa-lightbulb text-amber-400 text-lg"></i> <span>Solución del Acertijo</span>`;
+      feedbackText.innerHTML = `<strong>Respuesta:</strong> ${riddle.answer}`;
+
+      feedbackBox.classList.remove('hidden');
+      document.getElementById('btn-next-riddle').classList.remove('hidden');
+    }
+
+    function nextRiddle() {
+      currentRiddleIndex = (currentRiddleIndex + 1) % riddlesList.length;
+      loadRiddle();
+    }
+
+    function goToDashboard() {
+      screenQuestion.classList.add('hidden');
+      screenRiddles.classList.add('hidden');
+      screenGame.classList.add('hidden');
+      screenDashboard.classList.remove('hidden');
+    }
+
+    function startAreaQuiz(areaKey) {
+      if (questionBank[areaKey] && questionBank[areaKey].length > 0) {
+        loadQuestion(questionBank[areaKey][0], false);
+      }
+    }
+
+    // ==========================================
+    // MOTOR AVANZADO DEL JUEGO CON SCROLL Y NIVELES
+    // ==========================================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let currentLevel = 1;
+    let cameraX = 0;
+    const worldWidth = 1200;
+
+    let player = { x: 30, y: 120, w: 18, h: 24, vx: 0, vy: 0, grounded: false };
+    let keys = { left: false, right: false };
+
+    let gameData = {
+      platforms: [],
+      blocks: [],
+      coins: [],
+      enemies: [],
+      flagX: 1100
+    };
+
+    function loadLevelData(levelNum) {
+      currentLevel = levelNum;
+      document.getElementById('game-level-title').innerText = `NIVEL ${levelNum}: ${levelNum === 1 ? 'PLATAFORMAS' : levelNum === 2 ? 'ENEMIGOS' : 'DESAFÍO FINAL'}`;
+      
+      player.x = 30;
+      player.y = 120;
+      player.vx = 0;
+      player.vy = 0;
+      cameraX = 0;
+
+      if (levelNum === 1) {
+        gameData.platforms = [
+          { x: 0, y: 180, w: 400, h: 40 },
+          { x: 220, y: 130, w: 100, h: 15 },
+          { x: 480, y: 180, w: 800, h: 40 },
+          { x: 650, y: 120, w: 120, h: 15 }
+        ];
+        gameData.blocks = [
+          { x: 260, y: 80, w: 22, h: 22, active: true, question: questionBank.matematicas[0] },
+          { x: 700, y: 70, w: 22, h: 22, active: true, question: questionBank.sociales[0] }
+        ];
+        gameData.coins = [
+          { x: 150, y: 150, taken: false }, { x: 240, y: 100, taken: false },
+          { x: 550, y: 150, taken: false }, { x: 720, y: 90, taken: false }
+        ];
+        gameData.enemies = [];
+      } 
+      else if (levelNum === 2) {
+        gameData.platforms = [
+          { x: 0, y: 180, w: 350, h: 40 },
+          { x: 420, y: 180, w: 400, h: 40 },
+          { x: 500, y: 125, w: 100, h: 15 },
+          { x: 880, y: 180, w: 400, h: 40 }
+        ];
+        gameData.blocks = [
+          { x: 530, y: 75, w: 22, h: 22, active: true, question: questionBank.naturales[0] }
+        ];
+        gameData.coins = [
+          { x: 200, y: 150, taken: false }, { x: 520, y: 95, taken: false }, { x: 950, y: 150, taken: false }
+        ];
+        gameData.enemies = [
+          { x: 220, y: 164, w: 16, h: 16, vx: -1, minX: 120, maxX: 300 },
+          { x: 600, y: 164, w: 16, h: 16, vx: 1, minX: 450, maxX: 750 }
+        ];
+      }
+      else {
+        gameData.platforms = [
+          { x: 0, y: 180, w: 250, h: 40 },
+          { x: 300, y: 150, w: 80, h: 15 },
+          { x: 420, y: 120, w: 80, h: 15 },
+          { x: 550, y: 180, w: 650, h: 40 }
+        ];
+        gameData.blocks = [
+          { x: 450, y: 70, w: 22, h: 22, active: true, question: questionBank.lectura[0] },
+          { x: 750, y: 120, w: 22, h: 22, active: true, question: questionBank.ingles[0] }
+        ];
+        gameData.coins = [
+          { x: 330, y: 120, taken: false }, { x: 450, y: 90, taken: false }, { x: 650, y: 150, taken: false }
+        ];
+        gameData.enemies = [
+          { x: 650, y: 164, w: 16, h: 16, vx: -1.5, minX: 570, maxX: 850 }
+        ];
+      }
+    }
+
+    function startMarioGame(lvl = 1) {
+      loadLevelData(lvl);
+      screenDashboard.classList.add('hidden');
+      screenGame.classList.remove('hidden');
+      requestAnimationFrame(gameLoop);
+    }
+
+    function gameMoveLeft(val) { keys.left = val; }
+    function gameMoveRight(val) { keys.right = val; }
+    function gameJump() {
+      if (player.grounded) {
+        player.vy = -8.5;
+        player.grounded = false;
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+      if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') gameJump();
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+      if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+    });
+
+    function gameLoop() {
+      if (screenGame.classList.contains('hidden')) return;
+
+      if (keys.left) player.vx = -2.5;
+      else if (keys.right) player.vx = 2.5;
+      else player.vx = 0;
+
+      player.vy += 0.45;
+      player.x += player.vx;
+      player.y += player.vy;
+
+      if (player.x < 0) player.x = 0;
+
+      if (player.y > canvas.height + 50) {
+        loadLevelData(currentLevel);
+      }
+
+      player.grounded = false;
+      gameData.platforms.forEach(plat => {
+        if (player.x + player.w > plat.x &&
+            player.x < plat.x + plat.w &&
+            player.y + player.h >= plat.y &&
+            player.y + player.h <= plat.y + 12 &&
+            player.vy >= 0) {
+          player.y = plat.y - player.h;
+          player.vy = 0;
+          player.grounded = true;
+        }
+      });
+
+      gameData.blocks.forEach(b => {
+        if (b.active &&
+            player.x + player.w > b.x &&
+            player.x < b.x + b.w &&
+            player.y <= b.y + b.h &&
+            player.y + player.h >= b.y &&
+            player.vy < 0) {
+          
+          player.vy = 2;
+          b.active = false;
+          setTimeout(() => {
+            loadQuestion(b.question, false, true);
+          }, 100);
+          return;
+        }
+      });
+
+      gameData.coins.forEach(c => {
+        if (!c.taken &&
+            player.x + player.w > c.x &&
+            player.x < c.x + 12 &&
+            player.y + player.h > c.y &&
+            player.y < c.y + 12) {
+          c.taken = true;
+          addPoints(5);
+        }
+      });
+
+      gameData.enemies.forEach(e => {
+        e.x += e.vx;
+        if (e.x < e.minX || e.x + e.w > e.maxX) e.vx *= -1;
+
+        if (player.x + player.w > e.x &&
+            player.x < e.x + e.w &&
+            player.y + player.h > e.y &&
+            player.y < e.y + e.h) {
+          if (player.vy > 0 && player.y + player.h < e.y + 10) {
+            e.x = -999;
+            player.vy = -5;
+            addPoints(10);
+          } else {
+            loadLevelData(currentLevel);
+          }
+        }
+      });
+
+      if (player.x >= gameData.flagX) {
+        if (currentLevel < 3) {
+          alert(`¡NIVEL ${currentLevel} SUPERADO! Cargando siguiente nivel...`);
+          startMarioGame(currentLevel + 1);
+        } else {
+          alert("🏆 ¡FELICITACIONES! Has completado todos los niveles de Saber Jump. (+50 PTS)");
+          addPoints(50);
+          goToDashboard();
+        }
+        return;
+      }
+
+      cameraX = player.x - 100;
+      if (cameraX < 0) cameraX = 0;
+      if (cameraX > worldWidth - canvas.width) cameraX = worldWidth - canvas.width;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.translate(-cameraX, 0);
+
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(cameraX, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#ffffff88';
+      ctx.fillRect(100, 30, 40, 15);
+      ctx.fillRect(450, 20, 60, 20);
+      ctx.fillRect(850, 40, 50, 15);
+
+      gameData.platforms.forEach(p => {
+        ctx.fillStyle = '#16a34a';
+        ctx.fillRect(p.x, p.y, p.w, 5);
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(p.x, p.y + 5, p.w, p.h - 5);
+      });
+
+      gameData.blocks.forEach(b => {
+        if (b.active) {
+          ctx.fillStyle = '#d97706';
+          ctx.fillRect(b.x, b.y, b.w, b.h);
+          ctx.fillStyle = '#fef08a';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.fillText('?', b.x + 7, b.y + 16);
+        } else {
+          ctx.fillStyle = '#525252';
+          ctx.fillRect(b.x, b.y, b.w, b.h);
+        }
+      });
+
+      gameData.coins.forEach(c => {
+        if (!c.taken) {
+          ctx.fillStyle = '#eab308';
+          ctx.beginPath();
+          ctx.arc(c.x + 6, c.y + 6, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      gameData.enemies.forEach(e => {
+        ctx.fillStyle = '#b91c1c';
+        ctx.fillRect(e.x, e.y, e.w, e.h);
+      });
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(gameData.flagX, 80, 4, 100);
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(gameData.flagX + 4, 80);
+      ctx.lineTo(gameData.flagX + 25, 92);
+      ctx.lineTo(gameData.flagX + 4, 104);
+      ctx.fill();
+
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(player.x, player.y, player.w, 10);
+      ctx.fillStyle = '#1d4ed8';
+      ctx.fillRect(player.x, player.y + 10, player.w, 14);
+
+      ctx.restore();
+
+      requestAnimationFrame(gameLoop);
+    }
+  </script>
+</body>
+</html>
